@@ -32,15 +32,21 @@ if __name__=='__main__':
         labels_array.append( os.path.basename(fname).split('__')[0] )
     
     X = np.asarray( features_array, dtype=np.float64 )
-    labels_idx = dict( map( reversed, enumerate( set(labels_array))))
+    unique_labels = sorted(set(labels_array))
+    labels_idx = dict( map( reversed, enumerate( unique_labels )))
     y = np.asarray( list(map( labels_idx.get, labels_array ) ))
 
     X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.33)
+            X, y, test_size=0.10)
     print("Training")
     clf = make_pipeline( StandardScaler(), svm.SVC(C=1,verbose=True))
     clf.fit(X_train, y_train)
+    print("Train Result")
+    y_pred = clf.predict(X_train)
+    print(classification_report(y_train, y_pred, target_names=unique_labels))
+
+    print("Test Result")
     y_pred = clf.predict(X_test)
-    print(classification_report(y_test, y_pred, target_names=list(labels_idx.keys())))
+    print(classification_report(y_test, y_pred, target_names=unique_labels))
     joblib.dump( clf, 'P5-clf.pk' )
 
