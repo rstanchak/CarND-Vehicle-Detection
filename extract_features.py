@@ -18,23 +18,28 @@ def get_hog_features(img, orient, pix_per_cell, cell_per_block,
                        visualise=vis, feature_vector=feature_vec)
         return features
 
+def convert_color( img, cspace ):
+    # apply color conversion if other than 'RGB'
+    if cspace != 'RGB':
+        if cspace == 'HSV':
+            feature_image = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+        elif cspace == 'LUV':
+            feature_image = cv2.cvtColor(img, cv2.COLOR_BGR2LUV)
+        elif cspace == 'HLS':
+            feature_image = cv2.cvtColor(img, cv2.COLOR_BGR2HLS)
+        elif cspace == 'YUV':
+            feature_image = cv2.cvtColor(img, cv2.COLOR_BGR2YUV)
+        elif cspace == 'YCrCb':
+            feature_image = cv2.cvtColor(img, cv2.COLOR_BGR2YCrCb)
+    else:
+        feature_image = np.copy(img)
+    return feature_image
+
 # Define a function to extract features from a list of images
 # Have this function call bin_spatial() and color_hist()
 def extract_feature(rgb, cspace='RGB', orient=9,
                         pix_per_cell=8, cell_per_block=2, hog_channel=0, feature_vec=True):
-    # apply color conversion if other than 'RGB'
-    if cspace != 'RGB':
-        if cspace == 'HSV':
-            feature_image = cv2.cvtColor(rgb, cv2.COLOR_BGR2HSV)
-        elif cspace == 'LUV':
-            feature_image = cv2.cvtColor(rgb, cv2.COLOR_BGR2LUV)
-        elif cspace == 'HLS':
-            feature_image = cv2.cvtColor(rgb, cv2.COLOR_BGR2HLS)
-        elif cspace == 'YUV':
-            feature_image = cv2.cvtColor(rgb, cv2.COLOR_BGR2YUV)
-        elif cspace == 'YCrCb':
-            feature_image = cv2.cvtColor(rgb, cv2.COLOR_BGR2YCrCb)
-    else: feature_image = np.copy(rgb)
+    feature_image = convert_color(rgb, cspace)
 
     # Call get_hog_features() with vis=False, feature_vec=True
     if hog_channel == 'ALL':
@@ -72,6 +77,29 @@ def extract_features(imgs, cspace='RGB', orient=9,
             print(file)
             continue
     return features
+
+class FeatureExtractor:
+    def __init__(self, *args, **kwargs):
+        self.extractors=args
+    def preprocess(self, img):
+        for extractor in self.extractors:
+            pass
+
+class ColorHistFeatureExtractor:
+    def __init__(self, cspace, nbins):
+        self.cspace = cspace
+        self.nbins = nbins
+
+    def preprocess(self, img):
+        self.cimg = convert_color(img, self.cspace)
+
+    def extract(self, window):
+        feature=[]
+        for ch in range(self.cimg.shape[2]):
+            hist, bin_edges = np.histogram( self.cimg[window[0][1]:window[1][1],window[0][0]:window[1][0]], self.nbins )
+            feature.append(hist)
+        return np.asarray(feature).ravel() * (1./(window[1][1]-window[0][1])*(window[1][0]-window[0][0]))
+
 
 class HogFeatureExtractor:
     def __init__(self, cspace, orient, pix_per_cell, cell_per_block, hog_channel):
