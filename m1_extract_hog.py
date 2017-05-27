@@ -24,7 +24,7 @@ if __name__=="__main__":
     samples = find_samples( image_dir )
     print("Found {} samples".format(len(samples)))
     for infname in samples:
-        outfname = os.path.sep.join([sys.argv[2], infname[(len(image_dir)+1):].replace(os.path.sep,'__')]) + '.npy'
+        outfname = os.path.sep.join([sys.argv[3], infname[(len(image_dir)+1):].replace(os.path.sep,'__')]) + '.npy'
         print("hog {} {} ({})".format(infname, outfname, json.dumps(env)))
         img = cv2.imread(infname)
         features = hog.preprocess(img)
