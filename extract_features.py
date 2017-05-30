@@ -78,12 +78,47 @@ def extract_features(imgs, cspace='RGB', orient=9,
             continue
     return features
 
+def extract_window(img, window):
+    return img[window[0][1]:window[1][1],window[0][0]:window[1][0],:]
+
 class FeatureExtractor:
-    def __init__(self, *args, **kwargs):
-        self.extractors=args
-    def preprocess(self, img):
-        for extractor in self.extractors:
-            pass
+    def __init__(self, cspace='RGB', spsize=16, histbins=8, hog_orient=9, hog_pix_per_cell=8, hog_cell_per_block=2):
+        self.hog = HogFeatureExtractor( cspace, hog_orient, hog_pix_per_cell, hog_cell_per_block, 'ALL' )
+        self.sp = SpatialFeatureExtractor( spsize )
+        self.hist = ColorHistFeatureExtractor( cspace, histbins )
+
+    def preprocess(self, img, window_size):
+        self.window_size = window_size
+        self.hog.preprocess( img )
+        self.sp.preprocess( img, window_size )
+        self.hist.preprocess( img )
+
+    def extract(self, p0):
+        window = (p0, (p0[0]+self.window_size, p0[1]+self.window_size))
+        features_array=[]
+        features_array.append( self.hog.extract_feature_window(window).astype(np.float64).ravel())
+        features_array.append( self.sp.extract(p0).astype(np.float64).ravel())
+        features_array.append( self.hist.extract(window).astype(np.float64).ravel())
+        feature_vec = np.hstack(features_array).ravel()
+        assert(np.isfinite(feature_vec).all())
+        return feature_vec
+
+
+class SpatialFeatureExtractor:
+
+    def __init__(self, size): 
+        self.size = size
+
+    def preprocess(self, img, window_size):
+        self.scale = (self.size/float(window_size))
+        if self.scale==1:
+            self.scaled=img
+        else:
+            self.scaled=cv2.resize( img, dsize=None, fx=self.scale, fy=self.scale )
+
+    def extract(self, p0):
+        p0 = (round(p0[0]*self.scale), round(p0[1]*self.scale))
+        return extract_window( self.scaled, (p0, (p0[0]+self.size, p0[1]+self.size)))
 
 class ColorHistFeatureExtractor:
     def __init__(self, cspace, nbins):
