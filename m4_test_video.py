@@ -4,7 +4,7 @@ from moviepy.editor import VideoFileClip
 import sys
 import cv2
 import vehicle_detection2
-from extract_features import HogFeatureExtractor
+from extract_features import FeatureExtractor
 import json
 
 from sklearn.externals import joblib
@@ -39,13 +39,14 @@ env_fname, clf_fname, input_fname, output_fname = sys.argv[1:]
 with open(env_fname) as f:
     env = json.load(f)
 clf = joblib.load(clf_fname)
-hog = HogFeatureExtractor(
+f = FeatureExtractor(
         cspace=env['colorspace'],
-        orient=env['orient'],
-        pix_per_cell=env['pix_per_cell'],
-        cell_per_block=env['cell_per_block'],
-        hog_channel=env['hog_channel'])
-vehicle_detector = vehicle_detection2.VehicleDetector(clf, hog)
+        spsize=env['spatial_size'],
+        histbins=env['histbins'],
+        hog_orient=env['orient'],
+        hog_pix_per_cell=env['pix_per_cell'],
+        hog_cell_per_block=env['cell_per_block'])
+vehicle_detector = vehicle_detection2.VehicleDetector(clf, f)
 app = App(vehicle_detector)
 input_clip = VideoFileClip( input_fname )
 output_clip = input_clip.fl_image( app.process_image )
