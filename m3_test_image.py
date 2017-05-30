@@ -25,12 +25,7 @@ class App:
 
     def process_image(self, img):
         processed = self.vehicle_detector.process_image(img)
-        scaled = cv2.resize(
-                processed,
-                (1024, int(img.shape[0]*(1024./img.shape[1]))))
-        cv2.imshow(self.w, scaled)
-        cv2.waitKey(-1)
-        return processed 
+        return processed
 
 env_fname, clf_fname, img_fname, out_fname = sys.argv[1:]
 
