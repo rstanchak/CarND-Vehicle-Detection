@@ -23,7 +23,7 @@ class VehicleDetector:
         y0 = int(5*img.shape[0]/9)
         y1 = int(3*img.shape[0]/4)
         x0 = int(img.shape[1]/5)
-        x1 = int(4*img.shape[1]/5)
+        x1 = img.shape[1]
 
         windows = []
         windows.append( slide_window(shape, x_start_stop=(x0,x1), y_start_stop=(y0,y1), xy_overlap=(0.5,0.5)))
@@ -50,36 +50,36 @@ class VehicleDetector:
         if self.heatmap == None:
             self.heatmap = np.zeros( img.shape[:2], dtype=np.float64)
         else:
-            self.heatmap = np.multiply(self.heatmap, 0.75)
+            self.heatmap = np.multiply(self.heatmap, 0.8)
 
         windows = self.get_windows(img)
         self.detections=[]
 
         scaled = img
-        for logscale in range(0,2):
+        for logscale in range(0,1):
             scale = (1<<logscale)
             if logscale > 0:
                 scaled = cv2.pyrDown(scaled)
 
-            self.feature_extractor.preprocess(scaled)
+            self.feature_extractor.preprocess(scaled, 64)
             for w in windows[logscale]:
                 #3) Extract the test window from original image
-                test_features = self.feature_extractor.extract_feature_window(w).reshape(1,-1)
+                test_features = self.feature_extractor.extract(w[0]).reshape(1,-1)
                 
                 #6) Predict using your classifier
-                prediction = self.classifier.predict(test_features)
+                prediction = self.classifier.decision_function(test_features)+0.75
                 #7) If positive (prediction == 1) then save the window
                 p1 = (w[0][0]*scale, w[0][1]*scale)
                 p2 = (w[1][0]*scale, w[1][1]*scale)
-                if prediction == 1:
-                    self.detections.append( (p1, p2 ) )
+                if prediction > 0:
+                    self.detections.append( (p1, p2, 0.2*np.log(1+prediction) ) )
                 else:
                     #cv2.rectangle(output, p1, p2, (255,0,0), 1)
                     pass
 
         #self.draw_windows( output, self.detections, (0,255,0), 2)
         self.heatmap = add_heat(self.heatmap, self.detections)
-        mask = apply_threshold(np.copy(self.heatmap), 1./128)
+        mask = apply_threshold(np.copy(self.heatmap), 0.3)
         #return draw_heat(output, mask)
         labels = spmeas.label(mask)
         return draw_labeled_bboxes(output, labels)
@@ -89,6 +89,7 @@ class VehicleDetector:
 def draw_heat(img, heatmap):
     mask = np.zeros( img.shape, dtype=np.uint8 )
     minVal, maxVal, minLoc, maxLoc = cv2.minMaxLoc(heatmap)
+    print(minVal,maxVal)
     scale = 1.0
     if maxVal > 0:
         scale *= (255./maxVal)
@@ -100,7 +101,7 @@ def add_heat(heatmap, bbox_list):
     for box in bbox_list:
         # Add += 1 for all pixels inside each bbox
         # Assuming each "box" takes the form ((x1, y1), (x2, y2))
-        heatmap[box[0][1]:box[1][1], box[0][0]:box[1][0]] += (1./(box[1][0]-box[0][0]))
+        heatmap[box[0][1]:box[1][1], box[0][0]:box[1][0]] += box[2]
 
     # Return updated heatmap
     return heatmap
